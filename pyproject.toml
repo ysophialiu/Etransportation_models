@@ -16,11 +16,11 @@ readme = "README.md"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
 dependencies = [
-    "pandas=1.5.3",
-    "torch=2.2.2",
-    "botorch=0.10.0",
-    "scipy=1.12.0",
-    "geopandas=0.14.2",
+    "pandas == 1.5.3",
+    "torch == 2.2.2",
+    "botorch == 0.10.0",
+    "scipy == 1.12.0",
+    "geopandas == 0.14.2",
 ]
 
 [project.urls]
