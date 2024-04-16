@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "etransportmodel"
+version = "1.0.0"
+authors = [
+    {name = "Yuechen Sophia Liu", email = "y@cornell.edu"},
+    {name = "Mohammad Tayarani", email = "y@cornell.edu"},
+    {name = "Fengqi You", email = "y@cornell.edu"},
+    {name = "H. Oliver Gao", email = "y@cornell.edu"},
+]
+description = "DESCRIPTION HERE"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+dependencies = [
+    "pandas=1.5.3",
+    "torch=2.2.2",
+    "botorch=0.10.0",
+    "scipy=1.12.0",
+    "geopandas=0.14.2",
+]
+
+[project.urls]
+Homepage = "https://example.com"
+Documentation = "https://readthedocs.org"
+Repository = "https://github.com/me/spam.git"
+Issues = "https://github.com/me/spam/issues"
+Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
