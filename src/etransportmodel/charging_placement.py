@@ -16,7 +16,7 @@ class ChargingPlacement(ChargingDemand):
     """
     def daily_revenue(self, ciz):#(ciz,p_price): # run_sim_demand is the return result of the previous function; day is the nth day 
         
-        ress = ChargingDemand.sim_demand_faster(ciz) #sim_demand(ciz)#run_sim_demand # run_sim_demand = sim_demand(ciz)
+        ress = ChargingDemand.sim_demand_faster(self, ciz) #sim_demand(ciz)#run_sim_demand # run_sim_demand = sim_demand(ciz)
         
         E_taz = pd.DataFrame.from_dict({(i,j,k): ress[1][i][j][k]
                             for i in ress[1].keys() 
@@ -49,7 +49,7 @@ class ChargingPlacement(ChargingDemand):
         rst = [] # store result
         for x in inds:
             
-            ress =  ChargingDemand.sim_demand_faster(x) #run simulation
+            ress =  ChargingDemand.sim_demand_faster(self, x) #run simulation
         
             E_taz = pd.DataFrame.from_dict({(i,j,k): ress[1][i][j][k]
                                 for i in ress[1].keys() 
@@ -82,7 +82,7 @@ class ChargingPlacement(ChargingDemand):
         rst = [] # store result
         for x in inds:
             
-            ress =  ChargingDemand.sim_demand_faster(x) #run simulation
+            ress =  ChargingDemand.sim_demand_faster(self, x) #run simulation
         
             E_taz = pd.DataFrame.from_dict({(i,j,k): ress[1][i][j][k]
                                 for i in ress[1].keys() 
@@ -112,7 +112,7 @@ class ChargingPlacement(ChargingDemand):
     """
     def energy_sum(self, ciz,p_price,day): # run_sim_demand is the return result of the previous function; day is the nth day 
         
-        ress = ChargingDemand.sim_demand(ciz,p_price)#run_sim_demand # run_sim_demand = sim_demand(ciz)
+        ress = ChargingDemand.sim_demand(self, ciz, p_price)#run_sim_demand # run_sim_demand = sim_demand(ciz)
         
         E_taz = pd.DataFrame.from_dict({(i,j,k): ress[1][i][j][k]
                             for i in ress[1].keys() 

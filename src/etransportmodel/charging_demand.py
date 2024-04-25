@@ -157,7 +157,7 @@ class ChargingDemand(ChargingChoice):
                         #print(result[0][ev_i],result[1][ev_i],result[2][ev_i],result[3][ev_i])
 
                     # draw charge choice
-                    choicee = ChargingChoice.charging_choice(result[d][ev_i][N_trip]['SOC_e'],dwell,self.trip.en_v[ev_i],L_avlb,p_price)
+                    choicee = ChargingChoice.charging_choice(self, result[d][ev_i][N_trip]['SOC_e'],dwell,self.trip.en_v[ev_i],L_avlb,p_price)
                     c_choice = choicee[0]
                     prob = choicee[1]
 
@@ -388,7 +388,7 @@ class ChargingDemand(ChargingChoice):
                         #print(result[0][ev_i],result[1][ev_i],result[2][ev_i],result[3][ev_i])
 
                     # draw charge choice
-                    choicee = ChargingChoice.charging_choice(result[d][ev_i][N_trip]['SOC_e'],dwell,self.trip.en_v[ev_i],L_avlb,p_price)
+                    choicee = ChargingChoice.charging_choice(self, result[d][ev_i][N_trip]['SOC_e'],dwell,self.trip.en_v[ev_i],L_avlb,p_price)
                     c_choice = choicee[0]
                     prob = choicee[1]
 

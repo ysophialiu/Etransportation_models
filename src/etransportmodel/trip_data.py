@@ -5,7 +5,7 @@ import torch
 import pandas as pd
 from scipy.stats import truncnorm
 
-from etransportmodel.constants import DEFAULT_VALUES
+from etransportmodel.constants import *
 
 """
 Description of file.
@@ -13,31 +13,31 @@ Description of file.
 class TripData():
     def __init__(
             self,
-            shapefile = DEFAULT_VALUES['shapefile'], 
-            tripfile = DEFAULT_VALUES['tripfile'],
+            shapefile = SHAPEFILE, 
+            tripfile = TRIPFILE,
             en = None,
             cn = None,
             prob_en = None,
             snr = None,
-            charge_behave = DEFAULT_VALUES['charge_behave'],
+            charge_behave = CHARGE_BEHAVE,
             rate = None,
             rate_name = None,
             location_name = None,
-            home_price = DEFAULT_VALUES['home_price'],
-            D = DEFAULT_VALUES['D'],
-            test_pub_price = DEFAULT_VALUES['test_pub_price'],
+            home_price = HOME_PRICE,
+            D = D,
+            test_pub_price = TEST_PUB_PRICE,
             L_available = None,
-            pub_price = DEFAULT_VALUES['pub_price'],
-            zzones = DEFAULT_VALUES['zzones'],
-            year = DEFAULT_VALUES['year'], # life-cycle time
-            discount_rate = DEFAULT_VALUES['discount_rate'],
-            scale_to_year = DEFAULT_VALUES['scale_to_year'],
-            station_efficiency = DEFAULT_VALUES['station_efficiency'],
-            electricity_cost = DEFAULT_VALUES['electricity_cost'], # in $/kWh  U.S average 0.07 for industry; 0.11 for commercial
-            L2_buy_cost = DEFAULT_VALUES['L2_buy_cost'], # in $
-            L2_build_cost = DEFAULT_VALUES['L2_build_cost'], # in $
-            DCFC_buy_cost = DEFAULT_VALUES['DCFC_buy_cost'], # in $
-            DCFC_build_cost = DEFAULT_VALUES['DCFC_build_cost'], # in $
+            pub_price = PUB_PRICE,
+            zzones = ZZONES,
+            year = YEAR, # life-cycle time
+            discount_rate = DISCOUNT_RATE,
+            scale_to_year = SCALE_TO_YEAR,
+            station_efficiency = STATION_EFFICIENCY,
+            electricity_cost = ELECTRICTIY_COST, # in $/kWh  U.S average 0.07 for industry; 0.11 for commercial
+            L2_buy_cost = L2_BUY_COST, # in $
+            L2_build_cost = L2_BUILD_COST, # in $
+            DCFC_buy_cost = DCFC_BUY_COST, # in $
+            DCFC_build_cost = DCFC_BUILD_COST, # in $
         ):
 
         self.initialize_trip_data(shapefile, tripfile, en, cn, prob_en, snr, charge_behave)
@@ -60,22 +60,22 @@ class TripData():
         # define possible energy of EV kWh
         # Reference: Tesla (60-100kWh); Nissan Leaf (40-60kWh)
         if en is None:
-            en = DEFAULT_VALUES['en']
+            en = EN
         self.en = en
 
         # define energy consumption rate: kWh/mile 
         #Reference: Tesla (0.33-0.38kwh/mi); Audi (0.43kWh/mi)
         if cn is None:
-            cn = DEFAULT_VALUES['cn']
+            cn = CN
         self.cn = cn
 
         # define probability distriburion of each En value
         if prob_en is None:
-            prob_en = DEFAULT_VALUES['prob_en']
+            prob_en = PROB_EN
         self.prob_en = prob_en
 
         if snr is None:
-            snr = DEFAULT_VALUES['snr']
+            snr = SNR
         self.snr = snr # list used in the dictionary
 
         self.charge_behave = charge_behave
@@ -89,9 +89,10 @@ class TripData():
         self.cn_v = dict(zip(self.ev_sample, self.cn_v))
 
         self.mean, self.sd, self.low, self.upp = self.Init_SOC(self.charge_behave)
-        self.SOC_int = self.get_truncated_normal(self.mean, self.sd, self.low, self.upp).rvs(size=len(self.ev_sample))
+        self.SOC_int_ = self.get_truncated_normal(self.mean, self.sd, self.low, self.upp).rvs(size=len(self.ev_sample))
+        self.SOC_int = dict(zip(self.ev_sample, self.SOC_int_))
 
-
+        
     """
     Documentation.
     """
@@ -104,16 +105,16 @@ class TripData():
         level 3: 480 volt (V) DC charge. 24-36-90-240 kW 
         """
         if rate is None:
-            rate = np.array([3.6,6.2,150]) # kW
+            rate = RATE # kW
         self.rate = rate
 
         if rate_name is None:
-            rate_name = ['h2','l2','l3']
+            rate_name = RATE_NAME
         self.rate_name = rate_name
 
         if location_name is None:
-            location_name = ['home','work','public']
-        self.location_name = DEFAULT_VALUES['location_name']
+            location_name = LOCATION_NAME
+        self.location_name = location_name
 
         """ 
         define price $/kwh for level 1,2,3
@@ -125,7 +126,7 @@ class TripData():
         self.test_pub_price = test_pub_price
 
         if L_available is None:
-            L_available = DEFAULT_VALUES['L_available']
+            L_available = L_AVAILABLE
         self.L_available = L_available
 
         self.charging_behavior_parameter(self.charge_behave)
@@ -274,7 +275,7 @@ class TripData():
         print('beta_cost:', self.beta_cost)
         print('lambda:', self.lbd)
         print('pub_price', self.pub_price)
-        print('zzone', self.zzone)
+        print('zzone', self.zzones)
         print('num_zzone', self.num_zone)
 
 
