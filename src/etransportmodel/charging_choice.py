@@ -5,6 +5,11 @@ from etransportmodel.trip_data import TripData
 Description of file.
 """
 class ChargingChoice():
+    """Initializes the Charging Choice module with some parameters
+
+    Keyword arguments:
+    tripData -- TripData module containing trip related parameters 
+    """
     def __init__(self, tripData: TripData):
         self.trip = tripData
 
