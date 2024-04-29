@@ -13,6 +13,23 @@ class ChargingChoice():
     Keyword arguments:
     SOC_a -- the value of the end of trip State of Charge, as a percent (0 to 1)
     """
+    def charging_choice_parameters(self):
+        print('* charging choice parameters:')
+        print('beta_SOC:', self.trip.beta_SOC)
+        print('beta_R:', self.trip.beta_R)
+        print('beta_delta_SOC:', self.trip.beta_delta_SOC)
+        print('beta_0:', self.trip.beta_0)
+        print('beta_SOC_0:', self.trip.beta_SOC_0)
+        print('beta_cost:', self.trip.beta_cost)
+        print('lambda:', self.trip.lbd)
+        print('* charging choice plot parameters')
+        print('not-home charging price ($):',self.trip.test_pub_price)
+        print('available charging type (home, non-home L2, non_home DCFC):', self.trip.L_available)
+
+
+    """
+    Documentation.
+    """
     def V_SOC(self, SOC_a):
         if SOC_a == 1:
             V_SOC = - self.trip.beta_SOC*10 #replace np.inf because of calculation issue
