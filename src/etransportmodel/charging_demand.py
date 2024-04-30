@@ -10,8 +10,19 @@ class ChargingDemand(ChargingChoice):
     def __init__(self, tripData: TripData):
         self.trip = tripData
 
-    """
-    Documentation
+    """Simulates the EVs and TAZs specified in the trip data over a period of trip.D+1 days.
+
+    Keyword arguments: 
+    ci_z -- list of work and public chargers available
+
+    Returns:
+    fail_EV --  list of EVs that failed to charge at some point during the trip
+    E_taz   --  dictionary of energy charged indexed by day, TAZ, charger type and location type
+    result  --  dictionary of individual EV charge results indexed by day, 
+                EV index number, trip number, and result field (one of 
+                'charge_start_period', 'charge_TAZ', 'd_purpose', 'dwell_time', 
+                'SOC_s', 'SOC_e', 'N.charger_available', 'L_available', 
+                'choice_prob', 'choice', 'rate', 'charge_end_period', and 'charge_energy')
     """
     def sim_demand(self, ci_z): #(ci_z,p_price):  # ci_z is a list of public charger
         
@@ -241,8 +252,7 @@ class ChargingDemand(ChargingChoice):
         return fail_EV, E_taz, result, ciz_t       
 
 
-    """
-    Documentation
+    """ Same as sim_demand, but optimized
     """
     def sim_demand_faster(self, ci_z): #(ci_z,p_price):  # ci_z is a list of public charger
         

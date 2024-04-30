@@ -5,11 +5,18 @@ from etransportmodel.trip_data import TripData
 Description of file.
 """
 class ChargingChoice():
+    """Initializes the Charging Choice module with some parameters
+
+    Keyword arguments:
+    tripData -- TripData module containing trip related parameters 
+    """
     def __init__(self, tripData: TripData):
         self.trip = tripData
 
-    """
-    Documentation.
+    """Calculates the indirect utility for the end of trip State of Charge
+    
+    Keyword arguments:
+    SOC_a -- the value of the end of trip State of Charge, as a percent (0 to 1)
     """
     def charging_choice_parameters(self):
         print('* charging choice parameters:')
@@ -39,16 +46,20 @@ class ChargingChoice():
         return V_SOC
 
 
-    """
-    Documentation.
+    """Calculates the utility for the charging rate of the selected charging mode
+
+    Keyword arguments:
+    rrate -- the charging rate of the selected charging mode
     """
     def V_rate(self, rrate):
         V_rate = self.trip.beta_R * (rrate-self.trip.rate[0])
         return V_rate
 
 
-    """
-    Documentation.
+    """Calculates the utility derived from the change in the State of Charge
+    
+    Keyword arguments:
+    SOC_b -- the change in State of Charge between the start and end of the trip
     """
     def V_d_SOC(self, SOC_b):
         V_d_SOC = self.trip.beta_delta_SOC * (1 - (SOC_b - 1)**2)
@@ -56,7 +67,12 @@ class ChargingChoice():
 
 
     """
-    Documentation.
+    The cost of charging an electric vehicle at home
+
+    Keyword arguments:
+    home_price: price of electricity at home in $/kWh
+    delta_SOC_i: change in percent of State of Charge over this charging session 
+    Enn: battery capacity of the electric vehicle simulated
     """
     def cost_home(self, home_price,delta_SOC_i,Enn):
         cost_home = home_price*delta_SOC_i*Enn 
@@ -64,7 +80,11 @@ class ChargingChoice():
 
 
     """
-    Documentation.
+    Calculates the indirect utility derived from the cost of charging 
+
+    Keyword arguments:
+    cost_a: cost of charging in the selected charging mode
+    cost_home: cost of charging at home
     """
     def V_cost(self, cost_a,cost_home):
         V_cost = -self.trip.beta_cost * (cost_a - cost_home) 
@@ -72,7 +92,18 @@ class ChargingChoice():
     
     
     """
-    Documentation.
+    Calculates the total indirect utility of charging using the selected charging mode
+
+    Keyword arguments:
+    SOC_l: current State of Charge level
+    d_time: driving time by the EV
+    Enn: battery capacity of the EV
+    L_available: which levels of charging are available (length 3 list) 
+    pubprice: electricity price in public in $/kWh
+
+    Returns: 
+    draw: randomly drawn charging level choice based on the modelled probabilities
+    p_l: probability for each charging level being chosen from the model and parameters 
     """
     def charging_choice(self, SOC_l, d_time, Enn, L_available, pubprice):
     
@@ -95,7 +126,6 @@ class ChargingChoice():
         V_c_home = [0]*3
         V_c = [0]*3
         for i in range(3):
-        
             V_r[i] = self.V_rate(self.trip.rate[i])
             V_d_s[i] = self.V_d_SOC(delta_SOC[i])
             V_c_home[i] = self.cost_home(self.trip.home_price,delta_SOC[i],Enn)
