@@ -16,13 +16,13 @@ class ChargingDemand(ChargingChoice):
     def sim_demand(self, ci_z: list) -> tuple:
         """Simulates the EVs and TAZs specified in the trip data over a period of trip.D+1 days.
 
-        Keyword arguments: 
-        ci_z -- list of work and public chargers available
+        Args:
+            ci_z (list): list of work and public chargers available (2s and 3s)
 
         Returns:
-        fail_EV --  list of EVs that failed to charge at some point during the trip
-        E_taz   --  dictionary of energy charged indexed by day, TAZ, charger type and location type
-        result  --  dictionary of individual EV charge results indexed by day, 
+            fail_EV: list of EVs that failed to charge at some point during the trip
+            E_taz: dictionary of energy charged indexed by day, TAZ, charger type and location type
+            result: dictionary of individual EV charge results indexed by day, 
                     EV index number, trip number, and result field (one of 
                     'charge_start_period', 'charge_TAZ', 'd_purpose', 'dwell_time', 
                     'SOC_s', 'SOC_e', 'N.charger_available', 'L_available', 
