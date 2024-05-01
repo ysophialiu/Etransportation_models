@@ -24,4 +24,16 @@ This module contains all the solution algortihms to select Electric Vechile Char
 This notebook contains all the functions and modules used in the charging choice, charging demand, charging placement, and optimization solver modules. It allows users to run the models and customize their case studies on their local computers.
 
 ## How to install
+Clone the repository or download the zip file onto your local machine.
+
+```sh
+git clone https://github.com/ysophialiu/Etransportation_models.git
+```
+
+Change directory to be inside the cloned repository/downloaded folder and install it..
+```
+cd ~/Etransportation_models
+pip install .
+```
+
 
