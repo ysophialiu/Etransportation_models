@@ -14,7 +14,7 @@ class ChargingDemand(ChargingChoice):
 
     
     def sim_demand(self, ci_z: list) -> tuple:
-        """Simulates the EVs and TAZs specified in the trip data over a period of trip.D+1 days.
+        """Simulates the EVs and TAZs specified in the trip data over a period of trip D+1 days.
 
         Args:
             ci_z (list): list of work and public chargers available (2s and 3s)
@@ -314,26 +314,6 @@ class ChargingDemand(ChargingChoice):
                 # check if ev in fail list, if yes skip
                 if ev_i in fail_EV: # skip fail to charge EV
                     continue
-                
-                # update ev energy
-                #result[d][ev_i][N_trip]['En'] = En_v[ev_i]
-                
-                # update ev cn
-                #result[d][ev_i][N_trip]['cn'] = cn_v[ev_i]
-
-                # update charge start time
-                #result[d][ev_i][N_trip]['charge_start_period'] = end_t
-                    
-                # update charge zone (TAZ)
-                #result[d][ev_i][N_trip]['charge_TAZ'] = int(zzone)
-                
-                # update charge purpose
-                #result[d][ev_i][N_trip]['d_purpose'] = pps
-                
-                # update dwell time
-                #result[d][ev_i][N_trip]['dwell time'] = dwell
-                
-                #print(row)
                 
                 # initialize start SOC of the first trip 
                 if d == 0 and N_trip == 0:  # if the first day, the first trip. start SOC is pre-defined

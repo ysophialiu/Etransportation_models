@@ -107,7 +107,6 @@ class OptimizationSolvers(ChargingPlacement):
 
     
     ### BAYESIAN OPTIMIZATION ###
-    
     def gen_high_dimension_variable(self, nn: int) -> torch.Tensor:
         """Generate y, with 0.
 
@@ -257,6 +256,7 @@ class OptimizationSolvers(ChargingPlacement):
         return best_observed_all_,best_observed_all_x_, init_x_, init_y_
 
 
+    ### REMBO ###
     def gen_projection_rembo(self, d: int, D: int) -> torch.Tensor:
         """Generate the projection matrix A as a (d x D) tensor.
 
@@ -303,7 +303,6 @@ class OptimizationSolvers(ChargingPlacement):
             AA (torch.Tensor): random embedding matrix, low_dim * dim
             n (int): number of initial value we want to generate
         """
-        # n is number of initial value want to generate
         gen_low = self.gen_low_dimension_variable(n)
         train_x = self.low_to_high_dimension(AA,gen_low)
         exact_obj = ChargingPlacement.Optimization_function(self, train_x).unsqueeze(-1).to(self.trip.ddtype)
@@ -359,7 +358,6 @@ class OptimizationSolvers(ChargingPlacement):
         return candidates.to(self.trip.ddtype)#, norm_candidates   # round to the lowest closet integer; change type back to 
 
 
-   # define run rembo
     def REMBO_run(self, N_initial, BATCH_SIZE, N_BATCH, N_TRIALS):
         """Executes multiple rounds of REMBO to optimize the placement of EV charging stations over several trials.
 
@@ -424,7 +422,6 @@ class OptimizationSolvers(ChargingPlacement):
         return best_observed_all,best_observed_all_x, init_x, init_y, A_all
 
 
-    # one step of iteration (GP and acquisition), and find the next point
     def get_next_points_REMBO_ac(self, init_x, init_y, bounds_init_x, BATCH_SIZE,ac_function):
         """Selects the next points for evaluation in REMBO using different acquisition functions based on user selection.
 
@@ -478,7 +475,6 @@ class OptimizationSolvers(ChargingPlacement):
         return candidates.to(self.trip.ddtype)#, norm_candidates   # round to the lowest closet integer; change type back to 
 
 
-    # define run rembo
     def REMBO_run_ac(self,BATCH_SIZE,N_BATCH,N_TRIALS,ac_function):
         """Runs the REMBO algorithm with a specified acquisition function across multiple trials.
 
@@ -501,8 +497,6 @@ class OptimizationSolvers(ChargingPlacement):
 
         # average over multiple trials
         for trial in range(1, N_TRIALS + 1):
-
-            #A = gen_projection_rembo(low_dim,dim)
 
             A_all.append(A_0)
 
@@ -545,7 +539,6 @@ class OptimizationSolvers(ChargingPlacement):
         return best_observed_all,best_observed_all_x, init_x, init_y, A_all
 
 
-    ########### add more trial
     def REMBO_add_trail(self, N_initial_,BATCH_SIZE_,N_BATCH_, N_TRIALS_, RUN_RESULT):
         """Adds more trials to an existing REMBO run.
 
@@ -596,8 +589,6 @@ class OptimizationSolvers(ChargingPlacement):
                 best_init_y = init_y.max().item()
                 best_init_x = init_x[init_y.argmax().item()]
 
-                #print(new_results)
-
                 best_observed.append(best_init_y)
                 best_observed_x.append(best_init_x)
 
@@ -608,9 +599,7 @@ class OptimizationSolvers(ChargingPlacement):
 
 
     ### RANDOM SEARCH ###
-
-    # define collect initial points
-    def generate_initial_data_BO(self, n):  # n is number of initial value want to generate
+    def generate_initial_data_BO(self, n):  
         """Generate initial data points for Bayesian Optimization using random search
 
         Args:
@@ -621,10 +610,9 @@ class OptimizationSolvers(ChargingPlacement):
         best_observation_value = exact_obj.max().item()
         best_observation_x = train_x[exact_obj.argmax().item()]
 
-        return train_x,exact_obj, best_observation_value,  best_observation_x #train_x.float()
+        return train_x,exact_obj, best_observation_value,  best_observation_x
 
 
-    # define run BO
     def Random_search(self, N_BATCH, N_TRIALS):
         """Performs a random search optimization strategy over multiple trials to find optimal settings.
 
@@ -682,7 +670,6 @@ class OptimizationSolvers(ChargingPlacement):
         return best_observed_all,best_observed_all_x, init_x, init_y
 
 
-    # add iteration
     def Random_add_iter(self, N_BATCH_, N_TRIALS_, RUN_RESULT):
         """Adds more iterations to an existing random search result to potentially improve the optimization outcome.
 
@@ -709,9 +696,8 @@ class OptimizationSolvers(ChargingPlacement):
                 rand_x_new = [np.random.uniform(self.x_real_l_bound.tolist(), self.x_real_u_bound.tolist()).astype(int)]
                 
                 init_x_new = torch.FloatTensor(rand_x_new).to(self.trip.ddtype)
-                #print(rand_x_new)
+
                 init_y_new = ChargingPlacement.Optimization_function(self, init_x_new).unsqueeze(-1).to(self.trip.ddtype)
-                #print(init_y_new)
         
                 if init_y_new >= best_observed[-1]:
                     best_observed.append(init_y_new)
