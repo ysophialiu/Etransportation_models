@@ -24,9 +24,9 @@ This module contains all the solution algortihms to select Electric Vechile Char
 ```
 |--TripData
     |--ChargingChoice
-    |--ChargingDemand
-        |--ChargingPlacement
-            |--OptimizationSolver
+        |--ChargingDemand
+            |--ChargingPlacement
+                |--OptimizationSolver
 ```
 constants.py contains the default parameters for Atlanta Case Study.
                                         
