@@ -1,4 +1,4 @@
-# etransportmodels
+# Electrified Transportation Models
 
 Transportation electrification, which refers to replacing fossil fuel use in the transportation sector with electricity, has evolved into a global mission to reduce greenhouse gas (GHG) emissions from the transportation sector. As an action, promoting the adoption of battery electric vehicles (BEVs), vehicles that are powered purely by electricity and produce zero emissions when in use, has emerged as a promising solution to an electrified low-emission transportation system.
 
