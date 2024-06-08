@@ -2,22 +2,34 @@ import numpy as np
 from etransportmodel.trip_data import TripData
 from etransportmodel.charging_choice import ChargingChoice
 
-"""
-Description of file.
-"""
 
 class ChargingDemand(ChargingChoice):
     def __init__(self, tripData: TripData):
+        """Initializes the Charging Demand module with some parameters.
+
+        Args:
+            tripData (TripData): TripData module containing trip related parameters 
+        """
         self.trip = tripData
 
-    """
-    Documentation
-    """
-    def sim_demand(self, ci_z): #(ci_z,p_price):  # ci_z is a list of public charger
+    
+    def sim_demand(self, ci_z: list) -> tuple:
+        """Simulates the EVs and TAZs specified in the trip data over a period of trip D+1 days.
+
+        Args:
+            ci_z (list): list of work and public chargers available (2s and 3s)
+
+        Returns:
+            fail_EV: list of EVs that failed to charge at some point during the trip
+            E_taz: dictionary of energy charged indexed by day, TAZ, charger type and location type
+            result: dictionary of individual EV charge results indexed by day, 
+                    EV index number, trip number, and result field (one of 
+                    'charge_start_period', 'charge_TAZ', 'd_purpose', 'dwell_time', 
+                    'SOC_s', 'SOC_e', 'N.charger_available', 'L_available', 
+                    'choice_prob', 'choice', 'rate', 'charge_end_period', and 'charge_energy')
+        """
         
-        p_price = self.trip.pub_price #all_inputes[0]
-        #ci_z = np.delete(all_inputes, 0, axis=0).astype('int64')
-        
+        p_price = self.trip.pub_price 
         ciz_home = np.ones(self.trip.num_zone) # N. of home charger is a list of 1 
         ciz_list = np.concatenate((ciz_home, ci_z), axis=None)  # put home, public charger in one list 
         ciz = np.reshape(ciz_list, (3,self.trip.num_zone))  # convert into a 3*N.TAZ matrix
@@ -35,7 +47,7 @@ class ChargingDemand(ChargingChoice):
         tt = np.around(np.arange(1,49,tt_step),1).tolist() # tt=1.0-48.9   49 represent the next '1'
         
         # predefine data structure
-        for d in range(self.trip.D+1): # D+1 days: in range 0 to D
+        for d in range(self.trip.simulated_days+1): # D+1 days: in range 0 to D
             E_taz[d] = {}
             ciz_t[d] = np.repeat(ciz[:, :, np.newaxis], len(tt), axis=2)  #ciz_t[d]=[type charger i, TAZ-1, time step]
 
@@ -53,7 +65,7 @@ class ChargingDemand(ChargingChoice):
                         E_taz[d][z][r][l] = 0 # initialize charge energy = 0
                         
         # start iteration
-        for d in range(self.trip.D): # for each day
+        for d in range(self.trip.simulated_days): # for each day
             for ind, row in self.trip.ev_trip.iterrows(): # iterate over trips
                 
                 # define values in this iteration
@@ -79,13 +91,7 @@ class ChargingDemand(ChargingChoice):
                 # check if ev in fail list, if yes skip
                 if ev_i in fail_EV: # skip fail to charge EV
                     continue
-                
-                # update ev energy
-                #result[d][ev_i][N_trip]['En'] = En_v[ev_i]
-                
-                # update ev cn
-                #result[d][ev_i][N_trip]['cn'] = cn_v[ev_i]
-
+            
                 # update charge start time
                 result[d][ev_i][N_trip]['charge_start_period'] = end_t
                     
@@ -151,10 +157,7 @@ class ChargingDemand(ChargingChoice):
                                 if ciz_t[d+1][1,loc_z,loc_t2]!=0:
                                     L_avlb[1] = 1
                                 if ciz_t[d+1][2,loc_z,loc_t2]!=0:
-                                    L_avlb[2] = 1    
-
-                    #if result[d][ev_i][N_trip]['SOC_e'] >=1:
-                        #print(result[0][ev_i],result[1][ev_i],result[2][ev_i],result[3][ev_i])
+                                    L_avlb[2] = 1
 
                     # draw charge choice
                     choicee = ChargingChoice.charging_choice(self, result[d][ev_i][N_trip]['SOC_e'],dwell,self.trip.en_v[ev_i],L_avlb,p_price)
@@ -241,10 +244,11 @@ class ChargingDemand(ChargingChoice):
         return fail_EV, E_taz, result, ciz_t       
 
 
-    """
-    Documentation
-    """
-    def sim_demand_faster(self, ci_z): #(ci_z,p_price):  # ci_z is a list of public charger
+    def sim_demand_faster(self, ci_z: list) -> tuple:
+        """Same as sim_demand, but optimized.
+        """ 
+        
+        #(ci_z,p_price):  # ci_z is a list of public charger
         
         p_price = self.trip.pub_price #all_inputes[0]
         #ci_z = np.delete(all_inputes, 0, axis=0).astype('int64')
@@ -266,7 +270,7 @@ class ChargingDemand(ChargingChoice):
         tt = np.around(np.arange(1,49,tt_step),1).tolist() # tt=1.0-48.9   49 represent the next '1'
         
         # predefine data structure
-        for d in range(self.trip.D+1): # D+1 days: in range 0 to D
+        for d in range(self.trip.simulated_days+1): # D+1 days: in range 0 to D
             E_taz[d] = {}
             ciz_t[d] = np.repeat(ciz[:, :, np.newaxis], len(tt), axis=2)  #ciz_t[d]=[type charger i, TAZ-1, time step]
 
@@ -284,7 +288,7 @@ class ChargingDemand(ChargingChoice):
                         E_taz[d][z][r][l] = 0 # initialize charge energy = 0
                         
         # start iteration
-        for d in range(self.trip.D): # for each day
+        for d in range(self.trip.simulated_days): # for each day
             for ind, row in self.trip.ev_trip.iterrows(): # iterate over trips
                 
                 # define values in this iteration
@@ -310,26 +314,6 @@ class ChargingDemand(ChargingChoice):
                 # check if ev in fail list, if yes skip
                 if ev_i in fail_EV: # skip fail to charge EV
                     continue
-                
-                # update ev energy
-                #result[d][ev_i][N_trip]['En'] = En_v[ev_i]
-                
-                # update ev cn
-                #result[d][ev_i][N_trip]['cn'] = cn_v[ev_i]
-
-                # update charge start time
-                #result[d][ev_i][N_trip]['charge_start_period'] = end_t
-                    
-                # update charge zone (TAZ)
-                #result[d][ev_i][N_trip]['charge_TAZ'] = int(zzone)
-                
-                # update charge purpose
-                #result[d][ev_i][N_trip]['d_purpose'] = pps
-                
-                # update dwell time
-                #result[d][ev_i][N_trip]['dwell time'] = dwell
-                
-                #print(row)
                 
                 # initialize start SOC of the first trip 
                 if d == 0 and N_trip == 0:  # if the first day, the first trip. start SOC is pre-defined

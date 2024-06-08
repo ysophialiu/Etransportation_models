@@ -1,5 +1,7 @@
 import numpy as np
 
+"""Default parameters for TripData."""
+
 SHAPEFILE = "example_data/Model_Traffic_Analysis_Zones_2020.shp"
 TRIPFILE = "example_data/EV_trip.p"
 EN = {0:60, 1:100, 2:100}
@@ -11,8 +13,7 @@ RATE = np.array([3.6,6.2,150])
 RATE_NAME =  ['h2','l2','l3']
 LOCATION_NAME = ['home','work','public']
 HOME_PRICE = 0.13
-D = 2
-TEST_PUB_PRICE = 0.43
+SIMULATED_DAYS = 2
 L_AVAILABLE = [0,1,1]
 PUB_PRICE = 0.43
 ZZONES = 'SD10'

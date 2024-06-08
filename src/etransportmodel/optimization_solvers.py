@@ -15,54 +15,65 @@ from etransportmodel.charging_placement import ChargingPlacement
 from etransportmodel.trip_data import TripData
 
 
-"""
-Description of file.
-"""
 class OptimizationSolvers(ChargingPlacement):
-    def __init__(self, tripData: TripData, low_dim=5, x_l_bound=-1, x_u_bound=1, y_variance=0.1):
+    def __init__(self, tripData: TripData, low_dim=5, x_l_bound=-1, x_u_bound=1, y_variance=0.1, max_station_capacity=5):
+        """Initializes the Optimization Solvers module with some parameters.
+
+        Args:
+            tripData (TripData): TripData module containing trip related parameters 
+            low_dim (int, optional): Dimensionality of the low-dimensional search space in REMBO. Defaults to 5.
+            x_l_bound (int, optional): lower bound of embedding search space. Defaults to -1.
+            x_u_bound (int, optional): upper bound of embedding search space. Defaults to 1.
+            y_variance (float, optional): Variance of the observation noise model used in Gaussian processes. Defaults to 0.1.
+            max_station_capacity (int, optional): Maximum capacity of EV charging stations that can be modeled. Defaults to 5.
+        """
         self.trip = tripData
         self.low_dim = low_dim
         self.dim = 2 * self.trip.num_zone
-        self.initialize_optimization_solvers(x_l_bound, x_u_bound, y_variance)
+        self.initialize_optimization_solvers(x_l_bound, x_u_bound, y_variance, max_station_capacity)
 
 
-    """
-    Documentation.
-    """
-    def initialize_optimization_solvers(self, x_l_bound, x_u_bound, y_variance):
-        max_EV_per_zone = self.create_ev_zones()
+    def initialize_optimization_solvers(self, x_l_bound: int, x_u_bound: int, y_variance: float, max_station_capacity: int):
+        """Initialize solver model information.
+
+        Args:
+            x_l_bound (int): lower bound of embedding search space
+            x_u_bound (int): upper bound of embedding search space
+            y_variance (float): y variance
+            max_station_capacity (int): maximum number of stations allowed at each location
+        """        
+        max_EV_per_zone = self.create_ev_zones(max_station_capacity)
         self.x_real_u_bound = np.append(list(max_EV_per_zone.values()),list(max_EV_per_zone.values()))
         self.x_real_u_bound = torch.tensor(self.x_real_u_bound,dtype = self.trip.ddtype)
-        self.x_real_l_bound = torch.tensor([0]*self.dim,dtype = self.trip.ddtype)#torch.tensor([0.]*dim,dtype = ddtype)
+        self.x_real_l_bound = torch.tensor([0]*self.dim,dtype = self.trip.ddtype)
         self.x_real_bound = torch.tensor([self.x_real_l_bound.tolist(),self.x_real_u_bound],dtype = self.trip.ddtype)
 
-        # define embedding space searching box bounds
+    
         self.x_l_bound = x_l_bound
         self.x_u_bound = x_u_bound
 
         self.y_l_bound = -np.sqrt(self.low_dim)
         self.y_u_bound = np.sqrt(self.low_dim)
 
-        # define y variance
         self.y_variance = y_variance
 
-        ## bounds for scaled x, and low dimension y, BO search bound (must be 0,1 for BOTorch)
         self.x_scale_bound = (torch.tensor([[x_l_bound],[x_u_bound]])).repeat(1,self.dim).to(self.trip.ddtype)
-
         self.y_bound = (torch.tensor([[self.y_l_bound],[self.y_u_bound]])).repeat(1,self.low_dim).to(self.trip.ddtype) 
 
-        #BO_bound = (torch.tensor([[0],[1]])).repeat(1,low_dim).to(ddtype)  # BOTorch search bound
-    
 
-    """
-    Documentation.
-    """
-    def create_ev_zones(self):
-        N_map = {} # define charge energy per TAZ
+    def create_ev_zones(self, max_station_capacity: int) -> dict:
+        """Creates the mapping for the maximum number of stations allowed at each location.
+        
+        Args:
+            max_station_capacity (int): maximum number of stations allowed
+
+        Returns:
+            dict: max number of stations allowed to be at each location
+        """
+        N_map = {}
 
         for i in self.trip.shapefile['new_zone_name']:
             N_map[i] = {}
-            #N_map[i]['max'] = 0
             for t in np.arange(0,48.1,0.5):
                 N_map[i][round(t, 2)] = 0
 
@@ -82,8 +93,6 @@ class OptimizationSolvers(ChargingPlacement):
                     t = round(t, 2)
                     if t >= a_time and t <= b_time:
                         N_map[tazz][t] = N_map[tazz][t]+1
-        
-        max_station_capacity = 5
 
         max_EV_per_zone= {}
         for i in self.trip.shapefile['new_zone_name']:
@@ -98,66 +107,62 @@ class OptimizationSolvers(ChargingPlacement):
 
     
     ### BAYESIAN OPTIMIZATION ###
-    
-    """
-    Documentation.
-    """
-    # generate y, with 0
-    def gen_high_dimension_variable(self, nn): ## nn: number of random y, nn<=10, need to adjust 100 to big value
+    def gen_high_dimension_variable(self, nn: int) -> torch.Tensor:
+        """Generate y, with 0.
+
+        Args:
+            nn (int): number of random y, nn <= 10
+        """        
         rand_yy = []
-        rand_yy.append([0] * self.dim)# add 0 list
-        #rand_yy.append([int(i/2) for i in x_real_u_bound.tolist()])
-        for _ in range (nn - 1): #(nn-1):
-            test_y = np.random.uniform(self.x_real_l_bound.tolist(), self.x_real_u_bound.tolist()).astype(int) #np.random.randint(0,x_real_u_bound.tolist()) #torch.FloatTensor(low_dim).uniform_(y_l_bound, y_u_bound).to(ddtype)
+        rand_yy.append([0] * self.dim)
+        for _ in range(nn - 1):
+            test_y = np.random.uniform(self.x_real_l_bound.tolist(), self.x_real_u_bound.tolist()).astype(int)
             rand_yy.append(test_y)
         return torch.FloatTensor(rand_yy).to(self.trip.ddtype)
     
 
-    """
-    Documentation.
-    """
-    ### ADDED variables ddtype
-    def generate_initial_data_BO(self, n):  # n is number of initial value want to generate
+    def generate_initial_data_BO(self, n: int) -> tuple: 
+        """Generate initial data for Bayesian Optimization.
+
+        Args:
+            n (int): number of initial value to generate
+        """        
         train_x = self.gen_high_dimension_variable(n)
         exact_obj = ChargingPlacement.Optimization_function(self, train_x).unsqueeze(-1).to(self.trip.ddtype)
         best_observation_value = exact_obj.max().item()
         best_observation_x = train_x[exact_obj.argmax().item()]
 
-        return train_x, exact_obj, best_observation_value, best_observation_x #train_x.float()
+        return train_x, exact_obj, best_observation_value, best_observation_x
 
 
-    """
-    Documentation.
-    """
-    ### ADDED variables, dim, ddtype, y_variance
-    def get_next_points_BO(self, init_x, init_y, best_init_y, bounds_init_x, BATCH_SIZE):
-        
-        #global feed
+    def get_next_points_BO(self, init_x , init_y, best_init_y, bounds_init_x, BATCH_SIZE) -> torch.Tensor:
+        """Get new data point for Bayesian Optimization
 
+        Args:
+            init_x (torch.Tensor): Current input data points.
+            init_y (torch.Tensor): Outputs corresponding to init_x.
+            best_init_y (float): The best observed output value.
+            bounds_init_x (torch.Tensor): Bounds for the inputs.
+            BATCH_SIZE (int): Number of new candidate points to generate.
+        """
         BO_bound = (torch.tensor([[0],[1]])).repeat(1,self.dim).to(self.trip.ddtype)
         
-        norm_init_x = normalize(init_x, bounds=bounds_init_x) # normalize x into [0,1]
+        norm_init_x = normalize(init_x, bounds=bounds_init_x)
         
-        mean_init_y = init_y.mean().item() # mean of y
-        std_init_y = init_y.std().item()  # std of y
+        mean_init_y = init_y.mean().item()
+        std_init_y = init_y.std().item()
         
-        norm_init_y = (init_y-mean_init_y)/std_init_y  # standardize y    
-        norm_init_Y_var = torch.full_like(norm_init_y, self.y_variance) # y with noise    
-        norm_best_init_y = norm_init_y.max().item() # best stardized y
-        #print(norm_init_x,norm_init_y,norm_init_Y_var)
+        norm_init_y = (init_y-mean_init_y)/std_init_y 
+        norm_init_Y_var = torch.full_like(norm_init_y, self.y_variance)
+        norm_best_init_y = norm_init_y.max().item()
         
-        single_model = FixedNoiseGP(norm_init_x,norm_init_y,norm_init_Y_var) # define GP: single task homoskedastic exact GP
+        single_model = FixedNoiseGP(norm_init_x,norm_init_y,norm_init_Y_var)
     
-        mml = ExactMarginalLogLikelihood(single_model.likelihood,single_model) # define likelihood to fit GP:The exact marginal log likelihood (MLL) for an exact Gaussian process with a Gaussian likelihood.
+        mml = ExactMarginalLogLikelihood(single_model.likelihood,single_model) 
+        fit_gpytorch_model(mml)
 
-        fit_gpytorch_model(mml) # Fit hyperparameters of a GPyTorch model, L-BFGS-B via scipy.optimize.minimize().
-        #fit_gpytorch_model(mml, optimizer=fit_gpytorch_torch) # Fit hyperparameters of a GPyTorch model, line search
+        EI = ExpectedImprovement(model = single_model, best_f = norm_best_init_y)
 
-        EI = ExpectedImprovement(model = single_model, best_f = norm_best_init_y) # define acquisition function by GP
-
-        #EI = UpperConfidenceBound(model = single_model) # define acquisition function by GP
-
-        #print('1')
         norm_candidates, _ = optimize_acqf(
                         acq_function = EI,
                         bounds = BO_bound,
@@ -167,13 +172,18 @@ class OptimizationSolvers(ChargingPlacement):
             
         candidates = unnormalize(norm_candidates, bounds=bounds_init_x)
 
-        return candidates.int().to(self.trip.ddtype)#, norm_candidates   # round to the lowest closet integer; change type back to 
+        return candidates.int().to(self.trip.ddtype)
 
+    
+    def BO_run(self, N_initial, BATCH_SIZE, N_BATCH, N_TRIALS) -> tuple:
+        """Bayesian Optimization Run
 
-    """
-    Documentation.
-    """
-    def BO_run(self, N_initial, BATCH_SIZE, N_BATCH, N_TRIALS):
+        Args:
+            N_initial (int): Number of initial data points.
+            BATCH_SIZE (int): Number of candidates in each batch.
+            N_BATCH (int): Number of batches to run.
+            N_TRIALS (int): Number of trials to perform.
+        """
         
         warnings.filterwarnings('ignore', category=BadInitialCandidatesWarning)
         warnings.filterwarnings('ignore', category=RuntimeWarning)
@@ -182,7 +192,6 @@ class OptimizationSolvers(ChargingPlacement):
 
         best_observed_all_x = []
 
-        # average over multiple trials
         for trial in range(1, N_TRIALS + 1):
 
 
@@ -190,10 +199,7 @@ class OptimizationSolvers(ChargingPlacement):
             best_observed = []
             best_observed_x = []
 
-
-            # generate initial training data and initialize model
             init_x, init_y, best_init_y, best_init_x = self.generate_initial_data_BO(N_initial)
-            #best_observed_high = low_to_high_dimension(A,best_init_x)
 
             best_observed.append(best_init_y)
             best_observed_x.append(best_init_x)
@@ -211,8 +217,6 @@ class OptimizationSolvers(ChargingPlacement):
                 best_init_y = init_y.max().item()
                 best_init_x = init_x[init_y.argmax().item()]
 
-                #print(new_results)
-
                 best_observed.append(best_init_y)
                 best_observed_x.append(best_init_x)         
 
@@ -222,17 +226,16 @@ class OptimizationSolvers(ChargingPlacement):
         return best_observed_all, best_observed_all_x, init_x, init_y
 
 
-    """
-    Documentation.
-    """
-    ###### add more trial
 
-    # define BO add batch size (Follow up previous, run more iterations)
-        
-    # run N_BATCH rounds of BayesOpt after the initial random batch
+    def BO_add_iter(self, N_BATCH_, BATCH_SIZE_, x_real_bound_, RUN_RESULT) -> tuple:
+        """Run more iterations of Bayesian Optimization after intial batch run.
 
-    def BO_add_iter(self, N_BATCH_, BATCH_SIZE_, x_real_bound_, RUN_RESULT):
-
+        Args:
+            N_BATCH_ (int): Number of additional batches to run.
+            BATCH_SIZE_ (int): Number of candidates in each additional batch.
+            x_real_bound_ (torch.Tensor): Boundaries for the input space.
+            RUN_RESULT (tuple): Contains the results of a previous Bayesian Optimization run.
+        """
         best_observed_all_, best_observed_all_x_, init_x_, init_y_ = RUN_RESULT
         best_init_y_ = init_y_.max().item()
         
@@ -247,74 +250,77 @@ class OptimizationSolvers(ChargingPlacement):
             best_init_y = init_y_.max().item()
             best_init_x = init_x_[init_y_.argmax().item()]
 
-            #print(new_results)
-
             best_observed_all_[0].append(best_init_y)
             best_observed_all_x_[0].append(best_init_x)
                 
         return best_observed_all_,best_observed_all_x_, init_x_, init_y_
 
 
-    """
-    Documentation.
-    """
-        # Generate the projection matrix A as a (d x D) tensor
-    def gen_projection_rembo(self, d: int, D: int) -> torch.Tensor: #d low dimension, D high dimension
-        AA = torch.randn( D,d, dtype=self.trip.ddtype)
+    ### REMBO ###
+    def gen_projection_rembo(self, d: int, D: int) -> torch.Tensor:
+        """Generate the projection matrix A as a (d x D) tensor.
+
+        Args:
+            d (int): low dimension
+            D (int): high dimension
+        """        
+        AA = torch.randn(D,d, dtype=self.trip.ddtype)
         return AA
 
-    # define collect initial points
 
+    def gen_low_dimension_variable(self, nn: int) -> torch.Tensor:
+        """Generate y in low dimension, with 0.
 
-    """
-    Documentation.
-    """
-    # generate y in low dimension, with 0
-    def gen_low_dimension_variable(self, nn): ## nn: number of random y, nn<=10, need to adjust 100 to big value
+        Args:
+            nn (int): number of random y, nn <= 10
+        """        
         rand_yy = []
-        rand_yy.append([0] * self.low_dim)# add 0 list
-        for i in range (nn-1):#(nn):
-            test_y = np.random.uniform(self.y_l_bound, self.y_u_bound,self.low_dim)#torch.FloatTensor(low_dim).uniform_(y_l_bound, y_u_bound).to(ddtype)
+        rand_yy.append([0] * self.low_dim)
+        for i in range (nn-1):
+            test_y = np.random.uniform(self.y_l_bound, self.y_u_bound,self.low_dim)
             rand_yy.append(test_y)
         return torch.FloatTensor(rand_yy).to(self.trip.ddtype)
     
 
-    """
-    Documentation.
-    """
-    # convert low dimension y to high dimension x
-    def low_to_high_dimension(self, AA, yy): 
-    #yy is the low dimension variable, in how_dim
-    #AA is random embedding matrix, low_dim * dim
+    def low_to_high_dimension(self, AA: torch.Tensor, yy: torch.Tensor) -> torch.Tensor:
+        """Convert low dimension y to high dimension x
+
+        Args:
+            AA (torch.Tensor): random embedding matrix, low_dim * dim
+            yy (torch.Tensor): the low dimension variable, in low_dim
+        """
         scale_xx = torch.t(torch.matmul(AA,torch.t(yy)))
-        # project to box bound of scale_x
         scale_xx = torch.clamp(scale_xx, min=self.x_l_bound, max=self.x_u_bound)
         scale_xx_ = (scale_xx-self.x_l_bound)/(self.x_u_bound-self.x_l_bound)
-        #print(scale_xx_)
         real_xx = scale_xx_*(self.x_real_u_bound - self.x_real_l_bound) + self.x_real_l_bound #scale_xx_*x_real_u_bound
-        #print(real_xx)
         return real_xx.int().to(self.trip.ddtype)
-    # define collect initial points
 
 
-    """
-    Documentation.
-    """
-    def generate_initial_data_REMBO(self, AA,n):  # n is number of initial value want to generate
+    def generate_initial_data_REMBO(self, AA: torch.Tensor, n :int) -> tuple:
+        """Generate initial data points for REMBO run
+
+        Args:
+            AA (torch.Tensor): random embedding matrix, low_dim * dim
+            n (int): number of initial value we want to generate
+        """
         gen_low = self.gen_low_dimension_variable(n)
         train_x = self.low_to_high_dimension(AA,gen_low)
         exact_obj = ChargingPlacement.Optimization_function(self, train_x).unsqueeze(-1).to(self.trip.ddtype)
         best_observation_value = exact_obj.max().item()
         best_observation_low = gen_low[exact_obj.argmax().item()]
 
-        return gen_low,exact_obj, best_observation_value,  best_observation_low #train_x.float()
+        return gen_low,exact_obj, best_observation_value, best_observation_low #train_x.float()
 
 
-    """
-    Documentation.
-    """
     def get_next_points_REMBO(self, init_x, init_y, bounds_init_x, BATCH_SIZE):
+        """Generates the next batch of points for REMBO optimization by projecting low-dimensional suggestions to high dimensions.
 
+        Args:
+            init_x (torch.Tensor): The current set of low-dimensional input data points.
+            init_y (torch.Tensor): Outputs associated with init_x.
+            bounds_init_x (torch.Tensor): Bounds for low-dimensional input space.
+            BATCH_SIZE (int): Number of new candidates to generate.
+        """   
         BO_bound = (torch.tensor([[0],[1]])).repeat(1,self.low_dim).to(self.trip.ddtype)
         
         norm_init_x = normalize(init_x, bounds=bounds_init_x) # normalize x into [0,1]
@@ -352,12 +358,15 @@ class OptimizationSolvers(ChargingPlacement):
         return candidates.to(self.trip.ddtype)#, norm_candidates   # round to the lowest closet integer; change type back to 
 
 
-    """
-    Documentation.
-    """
-    # define run rembo
     def REMBO_run(self, N_initial, BATCH_SIZE, N_BATCH, N_TRIALS):
+        """Executes multiple rounds of REMBO to optimize the placement of EV charging stations over several trials.
 
+        Args:
+            N_initial (int): Number of initial data points.
+            BATCH_SIZE (int): Number of new candidate points per batch.
+            N_BATCH (int): Number of optimization batches per trial.
+            N_TRIALS (int): Number of independent trials to run.
+        """
         warnings.filterwarnings('ignore', category=BadInitialCandidatesWarning)
         warnings.filterwarnings('ignore', category=RuntimeWarning)
 
@@ -413,11 +422,16 @@ class OptimizationSolvers(ChargingPlacement):
         return best_observed_all,best_observed_all_x, init_x, init_y, A_all
 
 
-    """
-    Documentation.
-    """
-    # one step of iteration (GP and acquisition), and find the next point
     def get_next_points_REMBO_ac(self, init_x, init_y, bounds_init_x, BATCH_SIZE,ac_function):
+        """Selects the next points for evaluation in REMBO using different acquisition functions based on user selection.
+
+        Args:
+            init_x (torch.Tensor): The current set of low-dimensional input data points.
+            init_y (torch.Tensor): Outputs associated with init_x.
+            bounds_init_x (torch.Tensor): Bounds for low-dimensional input space.
+            BATCH_SIZE (int): Number of new candidate points to generate.
+            ac_function (str): Type of acquisition function to use ('EI', 'PI', 'UCB', 'PM').
+        """
 
         BO_bound = (torch.tensor([[0],[1]])).repeat(1,self.low_dim).to(self.trip.ddtype)
         
@@ -461,11 +475,15 @@ class OptimizationSolvers(ChargingPlacement):
         return candidates.to(self.trip.ddtype)#, norm_candidates   # round to the lowest closet integer; change type back to 
 
 
-    """
-    Documentation.
-    """
-    # define run rembo
     def REMBO_run_ac(self,BATCH_SIZE,N_BATCH,N_TRIALS,ac_function):
+        """Runs the REMBO algorithm with a specified acquisition function across multiple trials.
+
+        Args:
+            BATCH_SIZE (int): Number of new candidate points per batch.
+            N_BATCH (int): Number of optimization batches per trial.
+            N_TRIALS (int): Number of independent trials to run.
+            ac_function (str): Type of acquisition function to use ('EI', 'PI', 'UCB', 'PM').
+        """
         global A_0, init_x_0, init_y_0, best_init_y_0, best_init_x_0 
         #print(A, init_x, init_y, best_init_y, best_init_x)
         warnings.filterwarnings('ignore', category=BadInitialCandidatesWarning)
@@ -479,8 +497,6 @@ class OptimizationSolvers(ChargingPlacement):
 
         # average over multiple trials
         for trial in range(1, N_TRIALS + 1):
-
-            #A = gen_projection_rembo(low_dim,dim)
 
             A_all.append(A_0)
 
@@ -523,13 +539,16 @@ class OptimizationSolvers(ChargingPlacement):
         return best_observed_all,best_observed_all_x, init_x, init_y, A_all
 
 
-    """
-    Documentation.
-    """
-    ########### add more trial
     def REMBO_add_trail(self, N_initial_,BATCH_SIZE_,N_BATCH_, N_TRIALS_, RUN_RESULT):
+        """Adds more trials to an existing REMBO run.
 
-
+        Args:
+            N_initial_ (int): Number of initial data points for the new trials.
+            BATCH_SIZE_ (int): Number of new candidate points per batch for the new trials.
+            N_BATCH_ (int): Number of additional optimization batches per new trial.
+            N_TRIALS_ (int): Number of new trials to run.
+            RUN_RESULT (tuple): Existing results from a previous REMBO run.
+        """
         warnings.filterwarnings('ignore', category=BadInitialCandidatesWarning)
         warnings.filterwarnings('ignore', category=RuntimeWarning)
 
@@ -570,8 +589,6 @@ class OptimizationSolvers(ChargingPlacement):
                 best_init_y = init_y.max().item()
                 best_init_x = init_x[init_y.argmax().item()]
 
-                #print(new_results)
-
                 best_observed.append(best_init_y)
                 best_observed_x.append(best_init_x)
 
@@ -582,25 +599,27 @@ class OptimizationSolvers(ChargingPlacement):
 
 
     ### RANDOM SEARCH ###
+    def generate_initial_data_BO(self, n):  
+        """Generate initial data points for Bayesian Optimization using random search
 
-    """
-    Documentation.
-    """
-    # define collect initial points
-    def generate_initial_data_BO(self, n):  # n is number of initial value want to generate
+        Args:
+            n (int): number of initial values we want to generate
+        """
         train_x = self.gen_high_dimension_variable(n)
         exact_obj = ChargingPlacement.Optimization_function(self, train_x).unsqueeze(-1).to(self.trip.ddtype)
         best_observation_value = exact_obj.max().item()
         best_observation_x = train_x[exact_obj.argmax().item()]
 
-        return train_x,exact_obj, best_observation_value,  best_observation_x #train_x.float()
+        return train_x,exact_obj, best_observation_value,  best_observation_x
 
 
-    """
-    Documentation.
-    """
-    # define run BO
     def Random_search(self, N_BATCH, N_TRIALS):
+        """Performs a random search optimization strategy over multiple trials to find optimal settings.
+
+        Args:
+            N_BATCH (int): Number of batches of random searches to perform.
+            N_TRIALS (int): Number of trials to execute.
+        """   
         
         best_observed_all = []
 
@@ -651,12 +670,14 @@ class OptimizationSolvers(ChargingPlacement):
         return best_observed_all,best_observed_all_x, init_x, init_y
 
 
-    """
-    Documentation.
-    """
-    # add iteration
     def Random_add_iter(self, N_BATCH_, N_TRIALS_, RUN_RESULT):
-        
+        """Adds more iterations to an existing random search result to potentially improve the optimization outcome.
+
+        Args:
+            N_BATCH_ (int): Number of additional batches to run.
+            N_TRIALS_ (int): Number of new trials to execute.
+            RUN_RESULT (tuple): Contains the current best observations and their corresponding inputs.
+        """
         best_observed_all = RUN_RESULT[0]
         best_observed_all_x = RUN_RESULT[1]
         init_x = RUN_RESULT[2]
@@ -675,9 +696,8 @@ class OptimizationSolvers(ChargingPlacement):
                 rand_x_new = [np.random.uniform(self.x_real_l_bound.tolist(), self.x_real_u_bound.tolist()).astype(int)]
                 
                 init_x_new = torch.FloatTensor(rand_x_new).to(self.trip.ddtype)
-                #print(rand_x_new)
+
                 init_y_new = ChargingPlacement.Optimization_function(self, init_x_new).unsqueeze(-1).to(self.trip.ddtype)
-                #print(init_y_new)
         
                 if init_y_new >= best_observed[-1]:
                     best_observed.append(init_y_new)
